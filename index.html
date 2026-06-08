@@ -6,14 +6,69 @@
     <title>LION's V.A | Portal Definitivo</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        tailwind.config = { darkMode: 'class' }
+        tailwind.config = { 
+            darkMode: 'class' 
+        }
         
+        // --- BASE DE DATOS Y ESTADO GLOBAL EN LOCALSTORAGE ---
+        const DEFAULT_USERS = {
+            'admin': { password: '010891@1', role: 'admin', name: 'Administrador Principal' },
+            'user': { password: '123', role: 'user', name: 'Representante Demo' }
+        };
+
+        const DEFAULT_REGISTRATIONS = [
+            { 
+                id: 'REG-101', 
+                username: 'user', 
+                representative: 'Carlos Pérez', 
+                athlete: 'Juan Pérez', 
+                dob: '2012-05-15', 
+                docId: 'V-12345678', 
+                bank: 'Banesco', 
+                reference: '8829102', 
+                amount: '25.00', 
+                receiptName: 'comprobante_junio.png', 
+                status: 'Pendiente', 
+                date: '2026-06-05',
+                comment: ''
+            },
+            { 
+                id: 'REG-102', 
+                username: 'user', 
+                representative: 'María Gómez', 
+                athlete: 'Ana López', 
+                dob: '2010-09-20', 
+                docId: 'V-87654321', 
+                bank: 'Banco de Venezuela', 
+                reference: '9928112', 
+                amount: '30.00', 
+                receiptName: 'pago_inscripcion.png', 
+                status: 'Aprobado', 
+                date: '2026-05-28',
+                comment: 'Inscripción confirmada correctamente'
+            }
+        ];
+
+        // Guardar valores por defecto en localStorage si no existen
+        if (!localStorage.getItem('lions_users')) {
+            localStorage.setItem('lions_users', JSON.stringify(DEFAULT_USERS));
+        }
+        if (!localStorage.getItem('lions_registrations')) {
+            localStorage.setItem('lions_registrations', JSON.stringify(DEFAULT_REGISTRATIONS));
+        }
+
+        // Cargar bases de datos vivas
+        let mockDB = JSON.parse(localStorage.getItem('lions_users'));
+        let registrations = JSON.parse(localStorage.getItem('lions_registrations'));
+        let currentUser = null;
+        let isRegisterMode = false;
+        let selectedRegId = null; // Para la modal del administrador
+
         // --- Lógica de Navegación Global ---
         function toggleTheme() {
             document.documentElement.classList.toggle('dark');
         }
 
-        // --- Lógica de la Vista Pública ---
         function switchTab(tab) {
             const tabs = ['acceso', 'ubicacion', 'horarios', 'contacto'];
             tabs.forEach(t => {
@@ -29,40 +84,326 @@
         }
 
         function toggleMode(isRegister) {
+            isRegisterMode = isRegister;
             const registerFields = document.getElementById('register-fields');
             const submitBtn = document.getElementById('submit-btn');
             const toggleText = document.getElementById('toggle-text');
+            const errorMsg = document.getElementById('auth-error');
             
+            errorMsg.classList.add('hidden'); // Limpiar errores al cambiar de modo
             registerFields.classList.toggle('hidden', !isRegister);
             submitBtn.textContent = isRegister ? 'Registrarse' : 'Ingresar';
             toggleText.innerHTML = isRegister 
-                ? '¿Ya tienes cuenta? <span class="text-amber-600 cursor-pointer hover:underline" onclick="toggleMode(false)">Inicia sesión</span>' 
-                : '¿No tienes cuenta? <span class="text-amber-600 cursor-pointer hover:underline" onclick="toggleMode(true)">Regístrate</span>';
+                ? '¿Ya tienes cuenta? <span class="text-amber-600 cursor-pointer hover:underline font-semibold" onclick="toggleMode(false)">Inicia sesión</span>' 
+                : '¿No tienes cuenta? <span class="text-amber-600 cursor-pointer hover:underline font-semibold" onclick="toggleMode(true)">Regístrate</span>';
         }
 
-        // --- Transición entre Portales (SPA) ---
-        function login() {
-            // Oculta la vista pública y muestra la interna
-            document.getElementById('view-public').classList.add('hidden');
-            document.getElementById('view-internal').classList.remove('hidden');
-            // Opcional: Hacer scroll hacia arriba
-            window.scrollTo(0, 0);
+        // --- Lógica de Autenticación (SPA) ---
+        function handleAuth() {
+            const userIn = document.getElementById('input-user').value.trim();
+            const passIn = document.getElementById('input-pass').value;
+            const errorMsg = document.getElementById('auth-error');
+
+            // Validación de campos vacíos
+            if (!userIn || !passIn) {
+                errorMsg.textContent = "❌ Por favor, completa todos los campos.";
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+
+            if (isRegisterMode) {
+                // Simulación de Registro Real (en memoria persistida)
+                if (mockDB[userIn]) {
+                    errorMsg.textContent = "❌ El nombre de usuario ya existe.";
+                    errorMsg.classList.remove('hidden');
+                    return;
+                }
+                
+                // Guardamos el nuevo usuario en nuestra DB local
+                mockDB[userIn] = { password: passIn, role: 'user', name: `Representante (${userIn})` };
+                localStorage.setItem('lions_users', JSON.stringify(mockDB));
+                
+                showToast('🔑 ¡Registro exitoso! Ya puedes iniciar sesión.');
+                toggleMode(false); // Cambia al modo login
+                document.getElementById('input-pass').value = ''; // Limpia la clave
+                return;
+            }
+
+            // Validación de Login
+            if (mockDB[userIn] && mockDB[userIn].password === passIn) {
+                currentUser = { username: userIn, ...mockDB[userIn] };
+                errorMsg.classList.add('hidden');
+                
+                // Mostrar Vista Interna
+                document.getElementById('view-public').classList.add('hidden');
+                document.getElementById('view-internal').classList.remove('hidden');
+                
+                // Configurar el Dashboard según el Rol
+                document.getElementById('user-greeting').textContent = `Bienvenido, ${currentUser.name}`;
+                
+                renderDashboard();
+                window.scrollTo(0, 0);
+            } else {
+                // Error de credenciales
+                errorMsg.textContent = "❌ Usuario o contraseña incorrectos.";
+                errorMsg.classList.remove('hidden');
+            }
         }
 
         function logout() {
-            // Oculta la vista interna y muestra la pública
+            currentUser = null;
+            document.getElementById('input-user').value = '';
+            document.getElementById('input-pass').value = '';
             document.getElementById('view-internal').classList.add('hidden');
             document.getElementById('view-public').classList.remove('hidden');
-            // Volvemos a la pestaña de acceso por defecto
             switchTab('acceso');
             window.scrollTo(0, 0);
         }
 
-        function simulateSubmit() {
-            // Reemplazamos el alert genérico por una notificación visual nativa si fuera necesario, 
-            // pero para este ejemplo usaremos un alert simple modificado
-            alert('¡Registro enviado exitosamente al Administrador!');
+        // --- Lógica de Renderizado Dinámico de Paneles ---
+        function renderDashboard() {
+            const panelAdmin = document.getElementById('panel-admin');
+            const panelUser = document.getElementById('panel-user');
+            
+            // Recargar registros actualizados de localStorage
+            registrations = JSON.parse(localStorage.getItem('lions_registrations')) || [];
+
+            if (currentUser.role === 'admin') {
+                panelAdmin.classList.remove('hidden');
+                panelUser.classList.add('hidden');
+                renderAdminDashboard();
+            } else {
+                panelAdmin.classList.add('hidden');
+                panelUser.classList.remove('hidden');
+                renderUserDashboard();
+            }
+        }
+
+        function renderUserDashboard() {
+            const userPaymentsList = document.getElementById('user-payments-list');
+            userPaymentsList.innerHTML = '';
+
+            // Filtrar solo las inscripciones pertenecientes a este representante
+            const myRegs = registrations.filter(r => r.username === currentUser.username);
+
+            if (myRegs.length === 0) {
+                userPaymentsList.innerHTML = `
+                    <div class="text-center py-6 text-gray-400 dark:text-gray-500 text-sm">
+                        No posees registros o pagos cargados actualmente.
+                    </div>
+                `;
+                return;
+            }
+
+            myRegs.forEach(reg => {
+                let statusBadge = '';
+                if (reg.status === 'Pendiente') {
+                    statusBadge = `<span class="text-xs px-3 py-1 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border border-yellow-500/20 rounded-full font-bold">En revisión</span>`;
+                } else if (reg.status === 'Aprobado') {
+                    statusBadge = `<span class="text-xs px-3 py-1 bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20 rounded-full font-bold">Aprobado</span>`;
+                } else {
+                    statusBadge = `<span class="text-xs px-3 py-1 bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20 rounded-full font-bold">Rechazado</span>`;
+                }
+
+                const commentText = reg.comment ? `<p class="text-xs text-red-500 dark:text-red-400 mt-2 italic font-medium">Nota Admin: ${reg.comment}</p>` : '';
+
+                userPaymentsList.innerHTML += `
+                    <li class="p-4 border-b border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 hover:bg-gray-50/50 dark:hover:bg-black/20 transition">
+                        <div>
+                            <span class="text-sm font-bold text-gray-800 dark:text-gray-200">Inscripción Atleta: ${reg.athlete}</span>
+                            <div class="text-xs text-gray-500 mt-1 space-y-0.5">
+                                <p>Ref: <span class="font-semibold">${reg.reference}</span> | Banco: ${reg.bank} | Monto: $${reg.amount}</p>
+                                <p>Registrado el: ${reg.date} (${reg.id})</p>
+                            </div>
+                            ${commentText}
+                        </div>
+                        <div class="flex items-center">
+                            ${statusBadge}
+                        </div>
+                    </li>
+                `;
+            });
+        }
+
+        function renderAdminDashboard() {
+            // Actualizar Tarjetas de Estadísticas
+            const totalActive = registrations.filter(r => r.status === 'Aprobado').length;
+            const totalPending = registrations.filter(r => r.status === 'Pendiente').length;
+            const totalRejected = registrations.filter(r => r.status === 'Rechazado').length;
+
+            document.getElementById('stat-active').textContent = totalActive;
+            document.getElementById('stat-pending').textContent = totalPending;
+            document.getElementById('stat-rejected').textContent = totalRejected;
+
+            const adminTableBody = document.getElementById('admin-table-body');
+            adminTableBody.innerHTML = '';
+
+            if (registrations.length === 0) {
+                adminTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="p-6 text-center text-gray-500">No hay registros cargados en el sistema.</td>
+                    </tr>
+                `;
+                return;
+            }
+
+            // Renderizar filas de la tabla
+            registrations.forEach(reg => {
+                let statusBadge = '';
+                let actionBtn = '';
+
+                if (reg.status === 'Pendiente') {
+                    statusBadge = `<span class="px-2.5 py-1 bg-yellow-100 dark:bg-yellow-950/40 text-yellow-700 dark:text-yellow-400 rounded-lg text-xs font-bold">Pendiente</span>`;
+                    actionBtn = `<button onclick="openReviewModal('${reg.id}')" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow transition transform hover:scale-105">Corroborar</button>`;
+                } else if (reg.status === 'Aprobado') {
+                    statusBadge = `<span class="px-2.5 py-1 bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400 rounded-lg text-xs font-bold">Aprobado</span>`;
+                    actionBtn = `<button onclick="openReviewModal('${reg.id}')" class="bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-bold px-3 py-1.5 rounded-lg transition hover:bg-gray-300 dark:hover:bg-gray-700">Ver Detalles</button>`;
+                } else {
+                    statusBadge = `<span class="px-2.5 py-1 bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400 rounded-lg text-xs font-bold">Rechazado</span>`;
+                    actionBtn = `<button onclick="openReviewModal('${reg.id}')" class="bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-bold px-3 py-1.5 rounded-lg transition hover:bg-gray-300 dark:hover:bg-gray-700">Reabrir</button>`;
+                }
+
+                adminTableBody.innerHTML += `
+                    <tr class="hover:bg-gray-50/50 dark:hover:bg-black/20 transition duration-150">
+                        <td class="p-3 font-semibold text-gray-800 dark:text-gray-200">
+                            <div>${reg.athlete}</div>
+                            <div class="text-[10px] text-gray-400 font-normal">ID: ${reg.id}</div>
+                        </td>
+                        <td class="p-3">
+                            <div class="text-sm">${reg.representative}</div>
+                            <div class="text-xs text-gray-500">User: @${reg.username}</div>
+                        </td>
+                        <td class="p-3 text-sm font-semibold text-[#d4af37]">$${reg.amount}</td>
+                        <td class="p-3">${statusBadge}</td>
+                        <td class="p-3 text-right">${actionBtn}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        // --- Lógica de Manejo de Formularios ---
+        function handleAthleteSubmit() {
+            const repName = document.getElementById('athlete-rep').value.trim();
+            const athleteName = document.getElementById('athlete-name').value.trim();
+            const dob = document.getElementById('athlete-dob').value;
+            const docId = document.getElementById('athlete-id').value.trim();
+            const bank = document.getElementById('athlete-bank').value;
+            const ref = document.getElementById('athlete-ref').value.trim();
+            const amount = document.getElementById('athlete-amount').value.trim();
+            const receiptFile = document.getElementById('athlete-file');
+
+            if (!repName || !athleteName || !dob || !docId || !bank || !ref || !amount) {
+                alert('⚠️ Por favor completa todos los campos del registro.');
+                return;
+            }
+
+            // Simular nombre de archivo
+            let receiptName = "comprobante_vacio.png";
+            if (receiptFile.files && receiptFile.files[0]) {
+                receiptName = receiptFile.files[0].name;
+            }
+
+            const newReg = {
+                id: 'REG-' + Math.floor(100 + Math.random() * 900),
+                username: currentUser.username,
+                representative: repName,
+                athlete: athleteName,
+                dob: dob,
+                docId: docId,
+                bank: bank,
+                reference: ref,
+                amount: parseFloat(amount).toFixed(2),
+                receiptName: receiptName,
+                status: 'Pendiente',
+                date: new Date().toISOString().split('T')[0],
+                comment: ''
+            };
+
+            registrations.unshift(newReg);
+            localStorage.setItem('lions_registrations', JSON.stringify(registrations));
+
+            showToast('✅ ¡Comprobante y registro enviado al Administrador exitosamente!');
             document.getElementById('athlete-form').reset();
+            renderDashboard();
+        }
+
+        // --- Sistema para Corroborar Recibos (Consola de Administración) ---
+        function openReviewModal(regId) {
+            selectedRegId = regId;
+            const reg = registrations.find(r => r.id === regId);
+            if (!reg) return;
+
+            // Inyectar datos en la modal
+            document.getElementById('modal-id').textContent = reg.id;
+            document.getElementById('modal-status').textContent = reg.status;
+            document.getElementById('modal-rep').textContent = reg.representative;
+            document.getElementById('modal-athlete').textContent = reg.athlete;
+            document.getElementById('modal-dob').textContent = reg.dob;
+            document.getElementById('modal-docid').textContent = reg.docId;
+            
+            // Datos del Pago
+            document.getElementById('modal-bank').textContent = reg.bank;
+            document.getElementById('modal-ref').textContent = reg.reference;
+            document.getElementById('modal-amount').textContent = `$${reg.amount}`;
+            document.getElementById('modal-filename').textContent = reg.receiptName;
+            document.getElementById('admin-comment').value = reg.comment || '';
+
+            // Estilizar el Badge de Estado de la modal
+            const statusEl = document.getElementById('modal-status');
+            statusEl.className = "text-xs px-2.5 py-1 rounded-full font-bold uppercase tracking-wider ";
+            if (reg.status === 'Pendiente') {
+                statusEl.className += "bg-yellow-500/10 text-yellow-600 border border-yellow-500/20";
+            } else if (reg.status === 'Aprobado') {
+                statusEl.className += "bg-green-500/10 text-green-600 border border-green-500/20";
+            } else {
+                statusEl.className += "bg-red-500/10 text-red-600 border border-red-500/20";
+            }
+
+            // Mostrar Modal de Inspección
+            document.getElementById('review-modal').classList.remove('hidden');
+            document.getElementById('review-modal').classList.add('flex');
+        }
+
+        function closeReviewModal() {
+            document.getElementById('review-modal').classList.add('hidden');
+            document.getElementById('review-modal').classList.remove('flex');
+            selectedRegId = null;
+        }
+
+        function processPayment(action) {
+            if (!selectedRegId) return;
+            const regIndex = registrations.findIndex(r => r.id === selectedRegId);
+            if (regIndex === -1) return;
+
+            const comment = document.getElementById('admin-comment').value.trim();
+
+            if (action === 'Rechazar' && !comment) {
+                alert('⚠️ Por favor escribe un motivo o comentario para informar al representante del rechazo.');
+                return;
+            }
+
+            registrations[regIndex].status = action === 'Aprobar' ? 'Aprobado' : 'Rechazado';
+            registrations[regIndex].comment = comment;
+
+            // Guardar cambios en persistencia local
+            localStorage.setItem('lions_registrations', JSON.stringify(registrations));
+            
+            closeReviewModal();
+            renderDashboard();
+            showToast(`💾 Registro ${action === 'Aprobar' ? 'Aprobado' : 'Rechazado'} exitosamente.`);
+        }
+
+        // --- Notificaciones Toast Elegantes ---
+        function showToast(message) {
+            const toast = document.getElementById('system-toast');
+            toast.textContent = message;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+            
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3500);
         }
     </script>
     <style>
@@ -70,27 +411,24 @@
         body { font-family: 'Montserrat', sans-serif; }
         .gold-text { color: #d4af37; border-bottom: 2px solid #d4af37; }
         .bg-voley-pattern { background-color: #f3f4f6; }
-        .dark .bg-voley-pattern { background-color: #000000; }
-        
-        /* Animaciones suaves para transiciones */
-        #view-public, #view-internal {
-            transition: opacity 0.3s ease-in-out;
-        }
+        .dark .bg-voley-pattern { background-color: #0b0f19; }
+        #view-public, #view-internal { transition: opacity 0.3s ease-in-out; }
     </style>
 </head>
-<body class="bg-voley-pattern text-gray-900 dark:text-gray-100 min-h-screen transition-colors duration-500">
+<body class="bg-voley-pattern text-gray-900 dark:text-gray-100 min-h-screen transition-colors duration-500 flex flex-col justify-between">
 
-    <!-- BARRA DE NAVEGACIÓN GLOBAL -->
-    <nav class="flex justify-between items-center px-6 py-6 sticky top-0 bg-white/80 dark:bg-black/80 backdrop-blur-md z-50 border-b border-gray-200 dark:border-gray-800">
-        <div class="text-xl font-black italic tracking-tighter">LION'S <span class="text-[#d4af37]">V.A</span></div>
-        <button onclick="toggleTheme()" class="p-2 bg-gray-200 dark:bg-gray-800 rounded-full hover:bg-gray-300 dark:hover:bg-gray-700 transition">🌙/☀️</button>
+    <!-- NAV PRINCIPAL -->
+    <nav class="flex justify-between items-center px-6 py-4 sticky top-0 bg-white/80 dark:bg-[#0b0f19]/80 backdrop-blur-md z-40 border-b border-gray-200 dark:border-gray-800">
+        <div class="text-xl font-black italic tracking-tighter select-none">LION'S <span class="text-[#d4af37]">V.A</span></div>
+        <button onclick="toggleTheme()" class="p-2.5 bg-gray-100 dark:bg-gray-800 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition duration-300 shadow-inner flex items-center justify-center">
+            <span class="text-sm">🌙/☀️</span>
+        </button>
     </nav>
 
-    <!-- ========================================== -->
-    <!--               VISTA PÚBLICA                -->
-    <!-- ========================================== -->
-    <main id="view-public" class="py-10 px-4 max-w-lg mx-auto">
-        <!-- Navegación de Pestañas -->
+    <!-- PORTAL / VISTA PÚBLICA -->
+    <main id="view-public" class="py-10 px-4 max-w-lg mx-auto w-full flex-grow">
+        
+        <!-- Pestañas Públicas -->
         <div class="flex justify-center gap-4 mb-8 font-bold uppercase tracking-widest text-[9px] sm:text-xs">
             <button id="btn-acceso" onclick="switchTab('acceso')" class="gold-text pb-1 transition-colors">Acceso</button>
             <button id="btn-ubicacion" onclick="switchTab('ubicacion')" class="text-gray-500 pb-1 transition-colors hover:text-gray-700 dark:hover:text-gray-300">Ubicación</button>
@@ -98,126 +436,290 @@
             <button id="btn-contacto" onclick="switchTab('contacto')" class="text-gray-500 pb-1 transition-colors hover:text-gray-700 dark:hover:text-gray-300">Contacto</button>
         </div>
 
-        <!-- Sección: Acceso -->
-        <div id="tab-acceso" class="bg-white dark:bg-gray-900 p-8 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xl">
-            <h3 class="text-lg font-bold mb-6 text-center">Panel de Control</h3>
-            <!-- El evento onsubmit previene que la página recargue y ejecuta la función login() -->
-            <form onsubmit="event.preventDefault(); login();" class="space-y-4">
-                <input type="text" placeholder="Usuario" class="w-full p-3 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none transition" required>
+        <!-- Tab: Acceso -->
+        <div id="tab-acceso" class="bg-white dark:bg-[#121824] p-8 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xl transition-all duration-300">
+            <h3 class="text-lg font-bold mb-6 text-center tracking-tight">Panel de Control</h3>
+            
+            <form onsubmit="event.preventDefault(); handleAuth();" class="space-y-4">
+                <input id="input-user" type="text" placeholder="Usuario (ej: admin o user)" class="w-full p-3 bg-gray-50 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none transition">
                 
                 <div id="register-fields" class="hidden space-y-4">
-                    <input type="email" placeholder="Correo Electrónico" class="w-full p-3 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none transition">
+                    <input type="email" placeholder="Correo Electrónico" class="w-full p-3 bg-gray-50 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none transition">
                 </div>
                 
-                <input type="password" placeholder="Clave" class="w-full p-3 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none transition" required>
+                <input id="input-pass" type="password" placeholder="Clave (ej: 010891@1 para admin)" class="w-full p-3 bg-gray-50 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none transition">
                 
+                <p id="auth-error" class="hidden text-red-500 text-xs font-bold text-center bg-red-100 dark:bg-red-900/30 p-2.5 rounded-xl border border-red-300/30"></p>
+
                 <button id="submit-btn" type="submit" class="w-full bg-amber-600 text-white py-3 rounded-xl font-bold uppercase tracking-widest shadow-lg hover:bg-amber-700 transition transform hover:scale-[1.02]">Ingresar</button>
                 
-                <p id="toggle-text" class="text-center text-xs mt-4">¿No tienes cuenta? <span class="text-amber-600 cursor-pointer hover:underline" onclick="toggleMode(true)">Regístrate</span></p>
+                <p id="toggle-text" class="text-center text-xs mt-4">¿No tienes cuenta? <span class="text-amber-600 cursor-pointer hover:underline font-semibold" onclick="toggleMode(true)">Regístrate</span></p>
             </form>
         </div>
 
-        <!-- Sección: Ubicación -->
-        <div id="tab-ubicacion" class="hidden bg-white dark:bg-gray-900 p-8 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xl text-center">
+        <!-- Tab: Ubicación -->
+        <div id="tab-ubicacion" class="hidden bg-white dark:bg-[#121824] p-8 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xl text-center">
             <h3 class="text-lg font-black mb-4 uppercase">Cancha Deportiva</h3>
             <p class="text-sm opacity-80 leading-relaxed">Venezuela - Barquisimeto<br>San Martin de Porres</p>
-            <div class="mt-6 aspect-video bg-gray-200 dark:bg-gray-800 rounded-xl flex items-center justify-center border border-gray-300 dark:border-gray-700">
-                <span class="text-xs text-gray-500">Mapa de Google Maps Aquí</span>
-            </div>
         </div>
 
-        <!-- Sección: Horarios -->
-        <div id="tab-horarios" class="hidden bg-white dark:bg-gray-900 p-8 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xl text-center">
+        <!-- Tab: Horarios -->
+        <div id="tab-horarios" class="hidden bg-white dark:bg-[#121824] p-8 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xl text-center">
             <h3 class="text-lg font-black mb-6 uppercase text-amber-600">Horarios</h3>
             <div class="p-6 bg-amber-500/10 border border-amber-500/30 rounded-2xl transform hover:scale-105 transition">
                 <p class="text-2xl font-bold">3:45 PM - 6:40 PM</p>
-                <p class="text-sm mt-2 opacity-70">Entrenamientos LUNES - VIERNES</p>
+                <p class="text-sm mt-2 opacity-70">LUNES - VIERNES</p>
             </div>
         </div>
 
-        <!-- Sección: Contacto -->
-        <div id="tab-contacto" class="hidden bg-white dark:bg-gray-900 p-8 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xl text-center">
+        <!-- Tab: Contacto -->
+        <div id="tab-contacto" class="hidden bg-white dark:bg-[#121824] p-8 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xl text-center">
             <h3 class="text-lg font-black mb-6 uppercase">Contáctanos</h3>
             <div class="grid grid-cols-1 gap-4">
-                <a href="https://www.instagram.com/lionvoleyacadmy" target="_blank" class="flex items-center justify-center gap-3 p-3 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 text-white rounded-xl font-bold hover:opacity-90 transition transform hover:translate-y-[-2px] shadow-md">Instagram</a>
+                <a href="https://www.instagram.com/lionvoleyacadmy" target="_blank" class="flex items-center justify-center gap-3 p-3 bg-pink-600 text-white rounded-xl font-bold hover:opacity-90 transition transform hover:translate-y-[-2px] shadow-md">Instagram</a>
                 <a href="https://www.tiktok.com/@lionsvoley" target="_blank" class="flex items-center justify-center gap-3 p-3 bg-black dark:bg-gray-800 border dark:border-gray-700 text-white rounded-xl font-bold hover:opacity-90 transition transform hover:translate-y-[-2px] shadow-md">TikTok</a>
-                <a href="https://wa.me/584124717062" target="_blank" class="flex items-center justify-center gap-3 p-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition transform hover:translate-y-[-2px] shadow-md">WhatsApp</a>
+                <a href="https://wa.me/584124717062" target="_blank" class="flex items-center justify-center gap-3 p-3 bg-green-600 text-white rounded-xl font-bold hover:opacity-90 transition transform hover:translate-y-[-2px] shadow-md">WhatsApp</a>
             </div>
         </div>
     </main>
 
-
-    <!-- ========================================== -->
-    <!--               VISTA INTERNA                -->
-    <!--             (Oculta por defecto)           -->
-    <!-- ========================================== -->
-    <main id="view-internal" class="hidden py-8 px-4 max-w-2xl mx-auto">
-        <!-- Cabecera Interna y Botón de Cierre de Sesión -->
-        <div class="flex justify-between items-center mb-6">
-            <h1 class="text-xl font-bold">Bienvenido, Representante</h1>
-            <button onclick="logout()" class="text-xs bg-red-500/10 text-red-600 dark:text-red-400 px-4 py-2 rounded-lg font-bold uppercase tracking-wide hover:bg-red-500/20 transition">Cerrar Sesión</button>
+    <!-- PORTAL / VISTA INTERNA (SISTEMA AUTENTICADO) -->
+    <main id="view-internal" class="hidden py-8 px-4 max-w-4xl mx-auto w-full flex-grow">
+        
+        <!-- Cabecera de Bienvenida -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 bg-white dark:bg-[#121824] p-5 rounded-2xl shadow-md border border-gray-200/50 dark:border-gray-800/50">
+            <div>
+                <p class="text-xs text-gray-500 uppercase tracking-widest font-bold">Portal Interno</p>
+                <h1 id="user-greeting" class="text-xl font-bold text-amber-600">Cargando...</h1>
+            </div>
+            <button onclick="logout()" class="text-xs bg-red-500/10 text-red-600 dark:text-red-400 px-4 py-2.5 rounded-xl font-bold uppercase tracking-wide hover:bg-red-500/20 transition flex items-center gap-2">
+                <span>Cerrar Sesión</span>
+            </button>
         </div>
 
-        <!-- Panel de Registro de Atleta -->
-        <div class="bg-white dark:bg-gray-900 p-8 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xl">
-            <h2 class="text-2xl font-black mb-6 uppercase text-center">Registro de Atleta</h2>
-            
-            <form id="athlete-form" onsubmit="event.preventDefault(); simulateSubmit();" class="space-y-5">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input type="text" placeholder="Nombre del Representante" class="w-full p-3 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none transition" required>
-                    <input type="text" placeholder="Nombre del Atleta" class="w-full p-3 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none transition" required>
-                </div>
+        <!-- --------------------------------------- -->
+        <!-- PANEL DE USUARIO (REPRESENTANTE)        -->
+        <!-- --------------------------------------- -->
+        <div id="panel-user" class="hidden space-y-8">
+            <div class="bg-white dark:bg-[#121824] p-8 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xl">
+                <h2 class="text-xl font-black mb-6 uppercase text-center border-b border-gray-100 dark:border-gray-800 pb-3">Inscripción y Pago de Atleta</h2>
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input type="date" placeholder="Fecha de Nacimiento" class="w-full p-3 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none transition text-gray-500" required>
-                    <input type="text" placeholder="Cédula de Identidad" class="w-full p-3 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none transition" required>
-                </div>
+                <form id="athlete-form" onsubmit="event.preventDefault(); handleAthleteSubmit();" class="space-y-5">
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-gray-500 mb-1.5">Nombre del Representante</label>
+                            <input id="athlete-rep" type="text" placeholder="Nombre completo" class="w-full p-3 bg-gray-50 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-gray-500 mb-1.5">Nombre del Atleta</label>
+                            <input id="athlete-name" type="text" placeholder="Nombre completo" class="w-full p-3 bg-gray-50 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500" required>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-gray-500 mb-1.5">Fecha de Nacimiento</label>
+                            <input id="athlete-dob" type="date" class="w-full p-3 bg-gray-50 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none transition text-gray-500" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-gray-500 mb-1.5">Cédula de Identidad</label>
+                            <input id="athlete-id" type="text" placeholder="Ej: V-12345678" class="w-full p-3 bg-gray-50 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none transition" required>
+                        </div>
+                    </div>
 
-                <div class="border-t border-gray-200 dark:border-gray-800 pt-5">
-                    <label class="block text-sm font-bold mb-2">Cargar Comprobante de Pago Mensual</label>
-                    <div class="flex items-center justify-center w-full">
-                        <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-xl cursor-pointer bg-gray-50 dark:bg-black hover:bg-gray-100 dark:hover:bg-gray-800 transition">
-                            <div class="flex flex-col items-center justify-center pt-5 pb-6">
-                                <svg class="w-8 h-8 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
-                                <p class="text-xs text-gray-500">Haz clic para subir archivo (JPG, PNG o PDF)</p>
+                    <!-- Datos Financieros -->
+                    <div class="border-t border-gray-200 dark:border-gray-800 pt-5">
+                        <h4 class="text-sm font-bold uppercase tracking-wider text-amber-500 mb-4">Información de Pago</h4>
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-gray-500 mb-1.5">Banco de Origen</label>
+                                <select id="athlete-bank" class="w-full p-3 bg-gray-50 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none" required>
+                                    <option value="" disabled selected>Selecciona Banco</option>
+                                    <option value="Banesco">Banesco</option>
+                                    <option value="Banco de Venezuela">Banco de Venezuela</option>
+                                    <option value="Mercantil">Mercantil</option>
+                                    <option value="Provincial">Provincial</option>
+                                    <option value="Pago Móvil">Pago Móvil / Otro</option>
+                                </select>
                             </div>
-                            <input type="file" class="hidden" accept="image/*,.pdf" required>
-                        </label>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-gray-500 mb-1.5">Número de Referencia</label>
+                                <input id="athlete-ref" type="text" placeholder="Referencia de pago" class="w-full p-3 bg-gray-50 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none transition" required>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-gray-500 mb-1.5">Monto Reportado (USD)</label>
+                                <input id="athlete-amount" type="number" step="0.01" placeholder="Monto $" class="w-full p-3 bg-gray-50 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none transition" required>
+                            </div>
+                        </div>
+
+                        <label class="block text-xs font-bold uppercase text-gray-500 mb-2">Comprobante de Pago (Visual o PDF)</label>
+                        <div class="flex items-center justify-center w-full">
+                            <label class="flex flex-col items-center justify-center w-full h-28 border-2 border-gray-300 border-dashed rounded-xl cursor-pointer bg-gray-50 dark:bg-black hover:bg-gray-100 dark:hover:bg-gray-800/50 transition">
+                                <div class="flex flex-col items-center justify-center pt-4 pb-4">
+                                    <svg class="w-7 h-7 mb-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                                    <p class="text-xs text-gray-500">Seleccionar comprobante (JPG, PNG, PDF)</p>
+                                </div>
+                                <input id="athlete-file" type="file" class="hidden" accept="image/*,.pdf" required>
+                            </label>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="w-full bg-amber-600 text-white py-4 rounded-xl font-black uppercase tracking-widest hover:bg-amber-700 transition shadow-lg">Enviar Registro para Aprobación</button>
+                </form>
+            </div>
+            
+            <!-- Historial Personalizado -->
+            <div>
+                <h3 class="text-lg font-bold mb-4">Estatus de tus Registros</h3>
+                <div class="bg-white dark:bg-[#121824] rounded-3xl border border-gray-200 dark:border-gray-800 shadow-md overflow-hidden">
+                    <ul id="user-payments-list" class="divide-y divide-gray-100 dark:divide-gray-800">
+                        <!-- Cargados dinámicamente -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- --------------------------------------- -->
+        <!-- PANEL DE ADMINISTRADOR                  -->
+        <!-- --------------------------------------- -->
+        <div id="panel-admin" class="hidden space-y-8">
+            <!-- Estadísticas en tarjetas -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-green-600 text-white p-6 rounded-3xl shadow-lg border-b-4 border-green-800">
+                    <h4 class="text-xs font-bold uppercase opacity-80">Pagos Aprobados</h4>
+                    <p id="stat-active" class="text-4xl font-black mt-2">0</p>
+                </div>
+                <div class="bg-amber-500 text-white p-6 rounded-3xl shadow-lg border-b-4 border-amber-700">
+                    <h4 class="text-xs font-bold uppercase opacity-80">Por Corroborar</h4>
+                    <p id="stat-pending" class="text-4xl font-black mt-2">0</p>
+                </div>
+                <div class="bg-red-500 text-white p-6 rounded-3xl shadow-lg border-b-4 border-red-700">
+                    <h4 class="text-xs font-bold uppercase opacity-80">Rechazados</h4>
+                    <p id="stat-rejected" class="text-4xl font-black mt-2">0</p>
+                </div>
+            </div>
+
+            <!-- Tabla de Control de Todos los Comprobantes de Pago -->
+            <div class="bg-white dark:bg-[#121824] p-8 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xl">
+                <h2 class="text-xl font-black mb-6 uppercase border-b border-gray-100 dark:border-gray-800 pb-3">Auditoría Global de Comprobantes</h2>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm whitespace-nowrap">
+                        <thead class="bg-gray-50 dark:bg-[#0b0f19] text-gray-500 uppercase text-[10px] tracking-wider font-bold">
+                            <tr>
+                                <th class="p-3 rounded-l-lg">Atleta</th>
+                                <th class="p-3">Representante</th>
+                                <th class="p-3">Monto</th>
+                                <th class="p-3">Estado</th>
+                                <th class="p-3 rounded-r-lg text-right">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-table-body" class="divide-y divide-gray-100 dark:divide-gray-800/50">
+                            <!-- Filas cargadas dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="py-6 text-center text-xs text-gray-400 border-t border-gray-200 dark:border-gray-800">
+        © 2026 Lion's Volleyball Academy. Todos los derechos reservados. Barquisimeto, Venezuela.
+    </footer>
+
+    <!-- ========================================== -->
+    <!--            MODAL DE INSPECCIÓN             -->
+    <!-- ========================================== -->
+    <div id="review-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="bg-white dark:bg-[#121824] w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-800 animate-in fade-in zoom-in-95 duration-200">
+            
+            <div class="p-6 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-black/20">
+                <div>
+                    <h3 class="text-lg font-bold">Inspección de Registro y Recibo</h3>
+                    <p class="text-xs text-gray-500 mt-0.5">ID del Documento: <span id="modal-id" class="font-mono font-bold"></span></p>
+                </div>
+                <div id="modal-status"></div>
+            </div>
+
+            <div class="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+                
+                <!-- Datos Generales -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-gray-50 dark:bg-black/40 p-4 rounded-2xl">
+                    <div>
+                        <p class="text-[10px] font-bold uppercase text-gray-400">Atleta</p>
+                        <p id="modal-athlete" class="font-bold text-gray-800 dark:text-gray-200"></p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold uppercase text-gray-400">Cédula del Atleta</p>
+                        <p id="modal-docid" class="font-bold text-gray-800 dark:text-gray-200"></p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold uppercase text-gray-400">Representante</p>
+                        <p id="modal-rep" class="font-semibold"></p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold uppercase text-gray-400">Fecha de Nacimiento</p>
+                        <p id="modal-dob" class="font-medium"></p>
                     </div>
                 </div>
 
-                <button type="submit" class="w-full bg-amber-600 text-white py-4 rounded-xl font-black uppercase tracking-widest hover:bg-amber-700 transition shadow-lg transform hover:scale-[1.01]">
-                    Guardar Registro
-                </button>
-            </form>
-        </div>
+                <!-- Detalles de la Transacción Bancaria -->
+                <div>
+                    <h4 class="text-xs font-bold uppercase text-amber-500 mb-3 tracking-wider">Verificación de Pago Financiero</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 border border-gray-200 dark:border-gray-800 p-4 rounded-2xl bg-white dark:bg-[#0b0f19]">
+                        <div>
+                            <p class="text-[10px] font-bold uppercase text-gray-400">Banco de Origen</p>
+                            <p id="modal-bank" class="font-bold text-sm"></p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold uppercase text-gray-400">Referencia de Transferencia</p>
+                            <p id="modal-ref" class="font-bold text-sm text-gray-800 dark:text-gray-200"></p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold uppercase text-gray-400">Monto Registrado</p>
+                            <p id="modal-amount" class="font-black text-sm text-emerald-600 dark:text-emerald-400"></p>
+                        </div>
+                    </div>
+                </div>
 
-        <!-- Sección Administrativa / Historial -->
-        <div class="mt-10">
-            <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
-                <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                Mis Pagos Recientes
-            </h3>
-            <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 shadow-md">
-                <ul class="space-y-3">
-                    <li class="flex justify-between items-center p-3 border-b border-gray-100 dark:border-gray-800">
-                        <div class="flex flex-col">
-                            <span class="text-sm font-bold">Mensualidad Junio</span>
-                            <span class="text-xs text-gray-500">Atleta: Juan Pérez</span>
+                <!-- Archivo Adjunto -->
+                <div class="border border-gray-200 dark:border-gray-800 p-4 rounded-2xl bg-gray-50 dark:bg-black/10">
+                    <p class="text-[10px] font-bold uppercase text-gray-400 mb-2">Comprobante de Pago Cargado</p>
+                    <div class="flex items-center gap-3">
+                        <div class="bg-amber-500/10 text-amber-500 p-2.5 rounded-xl border border-amber-500/20">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                         </div>
-                        <span class="text-xs px-3 py-1 bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20 rounded-full font-bold">Verificado</span>
-                    </li>
-                    <li class="flex justify-between items-center p-3">
-                        <div class="flex flex-col">
-                            <span class="text-sm font-bold">Mensualidad Mayo</span>
-                            <span class="text-xs text-gray-500">Atleta: Juan Pérez</span>
+                        <div class="overflow-hidden">
+                            <p id="modal-filename" class="text-xs font-mono font-bold truncate max-w-sm"></p>
+                            <p class="text-[10px] text-gray-500">Haz clic para descargar o abrir en tamaño real (simulado)</p>
                         </div>
-                        <span class="text-xs px-3 py-1 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border border-yellow-500/20 rounded-full font-bold">En revisión</span>
-                    </li>
-                </ul>
+                    </div>
+                </div>
+
+                <!-- Caja de Comentarios de Aprobación/Rechazo -->
+                <div>
+                    <label class="block text-xs font-bold uppercase text-gray-400 mb-2">Comentarios o Motivo de Rechazo (Opcional si Aprueba)</label>
+                    <textarea id="admin-comment" rows="2" placeholder="Escribe aquí notas adicionales para el representante, ejemplo: 'Falta número de referencia', 'Referencia inválida', etc." class="w-full p-3 bg-gray-50 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none transition text-sm"></textarea>
+                </div>
+
             </div>
+
+            <!-- Botonera de Acciones de la Modal -->
+            <div class="p-6 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-black/20 flex flex-col sm:flex-row justify-end gap-3">
+                <button onclick="closeReviewModal()" class="px-5 py-2.5 bg-gray-200 dark:bg-gray-800 text-gray-800 dark:text-gray-200 text-xs font-bold uppercase rounded-xl hover:bg-gray-300 dark:hover:bg-gray-700 transition">Cancelar</button>
+                <button onclick="processPayment('Rechazar')" class="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase rounded-xl transition shadow-md">Rechazar Pago</button>
+                <button onclick="processPayment('Aprobar')" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold uppercase rounded-xl transition shadow-md">Aprobar Pago</button>
+            </div>
+
         </div>
-    </main>
+    </div>
+
+    <!-- TOAST DE SISTEMA FLOTANTE -->
+    <div id="system-toast" class="fixed bottom-6 right-6 z-50 bg-[#121824] dark:bg-white text-white dark:text-[#121824] border border-gray-700/50 dark:border-gray-200/50 px-5 py-3 rounded-2xl shadow-2xl font-semibold text-xs transition-all duration-300 translate-y-20 opacity-0 flex items-center gap-2"></div>
 
 </body>
 </html>
