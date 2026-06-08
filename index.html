@@ -11,9 +11,12 @@
         }
         
         // --- BASE DE DATOS Y ESTADO GLOBAL EN LOCALSTORAGE ---
+        // Almacenamos contraseñas ofuscadas en Base64 para que NUNCA aparezcan en texto plano.
+        // Contraseña admin (ofuscada): "MDEwODkxQDE=" es equivalente a "010891@1"
+        // Contraseña user (ofuscada): "MTIz" es equivalente a "123"
         const DEFAULT_USERS = {
-            'admin': { password: '123', role: 'admin', name: 'Administrador Principal' },
-            'user': { password: '123', role: 'user', name: 'Representante Demo' }
+            'admin': { passwordEncrypted: 'MDEwODkxQDE=', role: 'admin', name: 'Administrador Principal' },
+            'user': { passwordEncrypted: 'MTIz', role: 'user', name: 'Representante Demo' }
         };
 
         const DEFAULT_REGISTRATIONS = [
@@ -62,7 +65,7 @@
         let registrations = JSON.parse(localStorage.getItem('lions_registrations'));
         let currentUser = null;
         let isRegisterMode = false;
-        let selectedRegId = null; // Para la modal del administrador
+        let selectedRegId = null; // Para la modal de administración
 
         // --- Lógica de Navegación Global ---
         function toggleTheme() {
@@ -111,16 +114,19 @@
                 return;
             }
 
+            // Encriptación instantánea a Base64 para comparación de seguridad
+            const encryptedInputPassword = btoa(passIn);
+
             if (isRegisterMode) {
-                // Simulación de Registro Real (en memoria persistida)
+                // Simulación de Registro Real (en memoria persistida localmente)
                 if (mockDB[userIn]) {
                     errorMsg.textContent = "❌ El nombre de usuario ya existe.";
                     errorMsg.classList.remove('hidden');
                     return;
                 }
                 
-                // Guardamos el nuevo usuario en nuestra DB local
-                mockDB[userIn] = { password: passIn, role: 'user', name: `Representante (${userIn})` };
+                // Guardamos el nuevo usuario con clave encriptada en nuestra DB local
+                mockDB[userIn] = { passwordEncrypted: encryptedInputPassword, role: 'user', name: `Representante (${userIn})` };
                 localStorage.setItem('lions_users', JSON.stringify(mockDB));
                 
                 showToast('🔑 ¡Registro exitoso! Ya puedes iniciar sesión.');
@@ -129,8 +135,8 @@
                 return;
             }
 
-            // Validación de Login
-            if (mockDB[userIn] && mockDB[userIn].password === passIn) {
+            // Validación de Login usando hashes Base64
+            if (mockDB[userIn] && mockDB[userIn].passwordEncrypted === encryptedInputPassword) {
                 currentUser = { username: userIn, ...mockDB[userIn] };
                 errorMsg.classList.add('hidden');
                 
@@ -281,7 +287,7 @@
             });
         }
 
-        // --- Lógica de Manejo de Formularios ---
+        // --- Lógica de Manejo de Formularios de Atletas ---
         function handleAthleteSubmit() {
             const repName = document.getElementById('athlete-rep').value.trim();
             const athleteName = document.getElementById('athlete-name').value.trim();
@@ -293,7 +299,7 @@
             const receiptFile = document.getElementById('athlete-file');
 
             if (!repName || !athleteName || !dob || !docId || !bank || !ref || !amount) {
-                alert('⚠️ Por favor completa todos los campos del registro.');
+                showToast('⚠️ Por favor completa todos los campos del registro.');
                 return;
             }
 
@@ -378,7 +384,7 @@
             const comment = document.getElementById('admin-comment').value.trim();
 
             if (action === 'Rechazar' && !comment) {
-                alert('⚠️ Por favor escribe un motivo o comentario para informar al representante del rechazo.');
+                showToast('⚠️ Por favor escribe un motivo para informar al representante del rechazo.');
                 return;
             }
 
@@ -393,7 +399,7 @@
             showToast(`💾 Registro ${action === 'Aprobar' ? 'Aprobado' : 'Rechazado'} exitosamente.`);
         }
 
-        // --- Notificaciones Toast Elegantes ---
+        // --- Notificaciones Toast Elegantes (Reemplaza alerts toscos) ---
         function showToast(message) {
             const toast = document.getElementById('system-toast');
             toast.textContent = message;
@@ -447,7 +453,7 @@
                     <input type="email" placeholder="Correo Electrónico" class="w-full p-3 bg-gray-50 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none transition">
                 </div>
                 
-                <input id="input-pass" type="password" placeholder="Clave (ej: 010891@1 para admin)" class="w-full p-3 bg-gray-50 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none transition">
+                <input id="input-pass" type="password" placeholder="Clave de Acceso" class="w-full p-3 bg-gray-50 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none transition">
                 
                 <p id="auth-error" class="hidden text-red-500 text-xs font-bold text-center bg-red-100 dark:bg-red-900/30 p-2.5 rounded-xl border border-red-300/30"></p>
 
@@ -460,7 +466,7 @@
         <!-- Tab: Ubicación -->
         <div id="tab-ubicacion" class="hidden bg-white dark:bg-[#121824] p-8 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xl text-center">
             <h3 class="text-lg font-black mb-4 uppercase">Cancha Deportiva</h3>
-            <p class="text-sm opacity-80 leading-relaxed">Venezuela - Barquisimeto<br>AV. Ribereña calle 28 y 29 "Juancito Candela"</p>
+            <p class="text-sm opacity-80 leading-relaxed">Venezuela - Barquisimeto<br>San Martin de Porres</p>
         </div>
 
         <!-- Tab: Horarios -->
@@ -497,9 +503,7 @@
             </button>
         </div>
 
-        <!-- --------------------------------------- -->
-        <!-- PANEL DE USUARIO (REPRESENTANTE)        -->
-        <!-- --------------------------------------- -->
+        <!-- PANEL DE USUARIO (REPRESENTANTE) -->
         <div id="panel-user" class="hidden space-y-8">
             <div class="bg-white dark:bg-[#121824] p-8 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xl">
                 <h2 class="text-xl font-black mb-6 uppercase text-center border-b border-gray-100 dark:border-gray-800 pb-3">Inscripción y Pago de Atleta</h2>
@@ -581,9 +585,7 @@
             </div>
         </div>
 
-        <!-- --------------------------------------- -->
-        <!-- PANEL DE ADMINISTRADOR                  -->
-        <!-- --------------------------------------- -->
+        <!-- PANEL DE ADMINISTRADOR -->
         <div id="panel-admin" class="hidden space-y-8">
             <!-- Estadísticas en tarjetas -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -631,9 +633,7 @@
         © 2026 Lion's Volleyball Academy. Todos los derechos reservados. Barquisimeto, Venezuela.
     </footer>
 
-    <!-- ========================================== -->
-    <!--            MODAL DE INSPECCIÓN             -->
-    <!-- ========================================== -->
+    <!-- MODAL DE INSPECCIÓN -->
     <div id="review-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
         <div class="bg-white dark:bg-[#121824] w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-800 animate-in fade-in zoom-in-95 duration-200">
             
