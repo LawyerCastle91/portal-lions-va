@@ -3,15 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LION's V.A | Portal Oficial</title>
+    <title>LION's V.A | Portal Definitivo</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = { darkMode: 'class' }
         
+        // --- Lógica de Navegación Global ---
         function toggleTheme() {
             document.documentElement.classList.toggle('dark');
         }
 
+        // --- Lógica de la Vista Pública ---
         function switchTab(tab) {
             const tabs = ['acceso', 'ubicacion', 'horarios', 'contacto'];
             tabs.forEach(t => {
@@ -34,8 +36,33 @@
             registerFields.classList.toggle('hidden', !isRegister);
             submitBtn.textContent = isRegister ? 'Registrarse' : 'Ingresar';
             toggleText.innerHTML = isRegister 
-                ? '¿Ya tienes cuenta? <span class="text-amber-600 cursor-pointer" onclick="toggleMode(false)">Inicia sesión</span>' 
-                : '¿No tienes cuenta? <span class="text-amber-600 cursor-pointer" onclick="toggleMode(true)">Regístrate</span>';
+                ? '¿Ya tienes cuenta? <span class="text-amber-600 cursor-pointer hover:underline" onclick="toggleMode(false)">Inicia sesión</span>' 
+                : '¿No tienes cuenta? <span class="text-amber-600 cursor-pointer hover:underline" onclick="toggleMode(true)">Regístrate</span>';
+        }
+
+        // --- Transición entre Portales (SPA) ---
+        function login() {
+            // Oculta la vista pública y muestra la interna
+            document.getElementById('view-public').classList.add('hidden');
+            document.getElementById('view-internal').classList.remove('hidden');
+            // Opcional: Hacer scroll hacia arriba
+            window.scrollTo(0, 0);
+        }
+
+        function logout() {
+            // Oculta la vista interna y muestra la pública
+            document.getElementById('view-internal').classList.add('hidden');
+            document.getElementById('view-public').classList.remove('hidden');
+            // Volvemos a la pestaña de acceso por defecto
+            switchTab('acceso');
+            window.scrollTo(0, 0);
+        }
+
+        function simulateSubmit() {
+            // Reemplazamos el alert genérico por una notificación visual nativa si fuera necesario, 
+            // pero para este ejemplo usaremos un alert simple modificado
+            alert('¡Registro enviado exitosamente al Administrador!');
+            document.getElementById('athlete-form').reset();
         }
     </script>
     <style>
@@ -44,59 +71,153 @@
         .gold-text { color: #d4af37; border-bottom: 2px solid #d4af37; }
         .bg-voley-pattern { background-color: #f3f4f6; }
         .dark .bg-voley-pattern { background-color: #000000; }
+        
+        /* Animaciones suaves para transiciones */
+        #view-public, #view-internal {
+            transition: opacity 0.3s ease-in-out;
+        }
     </style>
 </head>
 <body class="bg-voley-pattern text-gray-900 dark:text-gray-100 min-h-screen transition-colors duration-500">
 
+    <!-- BARRA DE NAVEGACIÓN GLOBAL -->
     <nav class="flex justify-between items-center px-6 py-6 sticky top-0 bg-white/80 dark:bg-black/80 backdrop-blur-md z-50 border-b border-gray-200 dark:border-gray-800">
-        <div class="text-xl font-black italic tracking-tighter">LION'S <span class="gold-text">V.A</span></div>
-        <button onclick="toggleTheme()" class="p-2 bg-gray-200 dark:bg-gray-800 rounded-full">🌙/☀️</button>
+        <div class="text-xl font-black italic tracking-tighter">LION'S <span class="text-[#d4af37]">V.A</span></div>
+        <button onclick="toggleTheme()" class="p-2 bg-gray-200 dark:bg-gray-800 rounded-full hover:bg-gray-300 dark:hover:bg-gray-700 transition">🌙/☀️</button>
     </nav>
 
-    <main class="py-10 px-4 max-w-lg mx-auto">
+    <!-- ========================================== -->
+    <!--               VISTA PÚBLICA                -->
+    <!-- ========================================== -->
+    <main id="view-public" class="py-10 px-4 max-w-lg mx-auto">
+        <!-- Navegación de Pestañas -->
         <div class="flex justify-center gap-4 mb-8 font-bold uppercase tracking-widest text-[9px] sm:text-xs">
-            <button id="btn-acceso" onclick="switchTab('acceso')" class="gold-text pb-1">Acceso</button>
-            <button id="btn-ubicacion" onclick="switchTab('ubicacion')" class="text-gray-500 pb-1">Ubicación</button>
-            <button id="btn-horarios" onclick="switchTab('horarios')" class="text-gray-500 pb-1">Horarios</button>
-            <button id="btn-contacto" onclick="switchTab('contacto')" class="text-gray-500 pb-1">Contacto</button>
+            <button id="btn-acceso" onclick="switchTab('acceso')" class="gold-text pb-1 transition-colors">Acceso</button>
+            <button id="btn-ubicacion" onclick="switchTab('ubicacion')" class="text-gray-500 pb-1 transition-colors hover:text-gray-700 dark:hover:text-gray-300">Ubicación</button>
+            <button id="btn-horarios" onclick="switchTab('horarios')" class="text-gray-500 pb-1 transition-colors hover:text-gray-700 dark:hover:text-gray-300">Horarios</button>
+            <button id="btn-contacto" onclick="switchTab('contacto')" class="text-gray-500 pb-1 transition-colors hover:text-gray-700 dark:hover:text-gray-300">Contacto</button>
         </div>
 
-        <!-- Seccion Acceso -->
+        <!-- Sección: Acceso -->
         <div id="tab-acceso" class="bg-white dark:bg-gray-900 p-8 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xl">
             <h3 class="text-lg font-bold mb-6 text-center">Panel de Control</h3>
-            <form onsubmit="return false" class="space-y-4">
-                <input type="text" placeholder="Usuario" class="w-full p-3 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-xl">
+            <!-- El evento onsubmit previene que la página recargue y ejecuta la función login() -->
+            <form onsubmit="event.preventDefault(); login();" class="space-y-4">
+                <input type="text" placeholder="Usuario" class="w-full p-3 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none transition" required>
+                
                 <div id="register-fields" class="hidden space-y-4">
-                    <input type="email" placeholder="Correo Electrónico" class="w-full p-3 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-xl">
+                    <input type="email" placeholder="Correo Electrónico" class="w-full p-3 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none transition">
                 </div>
-                <input type="password" placeholder="Clave" class="w-full p-3 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-xl">
-                <button id="submit-btn" class="w-full bg-amber-600 text-white py-3 rounded-xl font-bold uppercase tracking-widest shadow-lg">Ingresar</button>
-                <p id="toggle-text" class="text-center text-xs mt-4">¿No tienes cuenta? <span class="text-amber-600 cursor-pointer" onclick="toggleMode(true)">Regístrate</span></p>
+                
+                <input type="password" placeholder="Clave" class="w-full p-3 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none transition" required>
+                
+                <button id="submit-btn" type="submit" class="w-full bg-amber-600 text-white py-3 rounded-xl font-bold uppercase tracking-widest shadow-lg hover:bg-amber-700 transition transform hover:scale-[1.02]">Ingresar</button>
+                
+                <p id="toggle-text" class="text-center text-xs mt-4">¿No tienes cuenta? <span class="text-amber-600 cursor-pointer hover:underline" onclick="toggleMode(true)">Regístrate</span></p>
             </form>
         </div>
 
-        <!-- Demas Secciones -->
+        <!-- Sección: Ubicación -->
         <div id="tab-ubicacion" class="hidden bg-white dark:bg-gray-900 p-8 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xl text-center">
             <h3 class="text-lg font-black mb-4 uppercase">Cancha Deportiva</h3>
             <p class="text-sm opacity-80 leading-relaxed">Venezuela - Barquisimeto<br>San Martin de Porres</p>
+            <div class="mt-6 aspect-video bg-gray-200 dark:bg-gray-800 rounded-xl flex items-center justify-center border border-gray-300 dark:border-gray-700">
+                <span class="text-xs text-gray-500">Mapa de Google Maps Aquí</span>
+            </div>
         </div>
 
+        <!-- Sección: Horarios -->
         <div id="tab-horarios" class="hidden bg-white dark:bg-gray-900 p-8 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xl text-center">
             <h3 class="text-lg font-black mb-6 uppercase text-amber-600">Horarios</h3>
-            <div class="p-6 bg-amber-500/10 border border-amber-500/30 rounded-2xl">
+            <div class="p-6 bg-amber-500/10 border border-amber-500/30 rounded-2xl transform hover:scale-105 transition">
                 <p class="text-2xl font-bold">3:45 PM - 6:40 PM</p>
                 <p class="text-sm mt-2 opacity-70">Entrenamientos LUNES - VIERNES</p>
             </div>
         </div>
 
+        <!-- Sección: Contacto -->
         <div id="tab-contacto" class="hidden bg-white dark:bg-gray-900 p-8 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xl text-center">
             <h3 class="text-lg font-black mb-6 uppercase">Contáctanos</h3>
             <div class="grid grid-cols-1 gap-4">
-                <a href="https://www.instagram.com/lionvoleyacadmy" class="flex items-center justify-center gap-3 p-3 bg-pink-600 text-white rounded-xl font-bold hover:opacity-90">Instagram</a>
-                <a href="https://www.tiktok.com/@lionsvoley" class="flex items-center justify-center gap-3 p-3 bg-black text-white rounded-xl font-bold hover:opacity-90">TikTok</a>
-                <a href="https://wa.me/584124717062" class="flex items-center justify-center gap-3 p-3 bg-green-600 text-white rounded-xl font-bold hover:opacity-90">WhatsApp</a>
+                <a href="https://www.instagram.com/lionvoleyacadmy" target="_blank" class="flex items-center justify-center gap-3 p-3 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 text-white rounded-xl font-bold hover:opacity-90 transition transform hover:translate-y-[-2px] shadow-md">Instagram</a>
+                <a href="https://www.tiktok.com/@lionsvoley" target="_blank" class="flex items-center justify-center gap-3 p-3 bg-black dark:bg-gray-800 border dark:border-gray-700 text-white rounded-xl font-bold hover:opacity-90 transition transform hover:translate-y-[-2px] shadow-md">TikTok</a>
+                <a href="https://wa.me/584124717062" target="_blank" class="flex items-center justify-center gap-3 p-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition transform hover:translate-y-[-2px] shadow-md">WhatsApp</a>
             </div>
         </div>
     </main>
+
+
+    <!-- ========================================== -->
+    <!--               VISTA INTERNA                -->
+    <!--             (Oculta por defecto)           -->
+    <!-- ========================================== -->
+    <main id="view-internal" class="hidden py-8 px-4 max-w-2xl mx-auto">
+        <!-- Cabecera Interna y Botón de Cierre de Sesión -->
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-xl font-bold">Bienvenido, Representante</h1>
+            <button onclick="logout()" class="text-xs bg-red-500/10 text-red-600 dark:text-red-400 px-4 py-2 rounded-lg font-bold uppercase tracking-wide hover:bg-red-500/20 transition">Cerrar Sesión</button>
+        </div>
+
+        <!-- Panel de Registro de Atleta -->
+        <div class="bg-white dark:bg-gray-900 p-8 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xl">
+            <h2 class="text-2xl font-black mb-6 uppercase text-center">Registro de Atleta</h2>
+            
+            <form id="athlete-form" onsubmit="event.preventDefault(); simulateSubmit();" class="space-y-5">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="text" placeholder="Nombre del Representante" class="w-full p-3 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none transition" required>
+                    <input type="text" placeholder="Nombre del Atleta" class="w-full p-3 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none transition" required>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="date" placeholder="Fecha de Nacimiento" class="w-full p-3 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none transition text-gray-500" required>
+                    <input type="text" placeholder="Cédula de Identidad" class="w-full p-3 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none transition" required>
+                </div>
+
+                <div class="border-t border-gray-200 dark:border-gray-800 pt-5">
+                    <label class="block text-sm font-bold mb-2">Cargar Comprobante de Pago Mensual</label>
+                    <div class="flex items-center justify-center w-full">
+                        <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-xl cursor-pointer bg-gray-50 dark:bg-black hover:bg-gray-100 dark:hover:bg-gray-800 transition">
+                            <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                                <svg class="w-8 h-8 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                                <p class="text-xs text-gray-500">Haz clic para subir archivo (JPG, PNG o PDF)</p>
+                            </div>
+                            <input type="file" class="hidden" accept="image/*,.pdf" required>
+                        </label>
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full bg-amber-600 text-white py-4 rounded-xl font-black uppercase tracking-widest hover:bg-amber-700 transition shadow-lg transform hover:scale-[1.01]">
+                    Guardar Registro
+                </button>
+            </form>
+        </div>
+
+        <!-- Sección Administrativa / Historial -->
+        <div class="mt-10">
+            <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                Mis Pagos Recientes
+            </h3>
+            <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 shadow-md">
+                <ul class="space-y-3">
+                    <li class="flex justify-between items-center p-3 border-b border-gray-100 dark:border-gray-800">
+                        <div class="flex flex-col">
+                            <span class="text-sm font-bold">Mensualidad Junio</span>
+                            <span class="text-xs text-gray-500">Atleta: Juan Pérez</span>
+                        </div>
+                        <span class="text-xs px-3 py-1 bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20 rounded-full font-bold">Verificado</span>
+                    </li>
+                    <li class="flex justify-between items-center p-3">
+                        <div class="flex flex-col">
+                            <span class="text-sm font-bold">Mensualidad Mayo</span>
+                            <span class="text-xs text-gray-500">Atleta: Juan Pérez</span>
+                        </div>
+                        <span class="text-xs px-3 py-1 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border border-yellow-500/20 rounded-full font-bold">En revisión</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </main>
+
 </body>
 </html>
