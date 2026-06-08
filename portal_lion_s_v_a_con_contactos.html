@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LION's V.A | Portal Oficial</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' }
+        function toggleTheme() {
+            document.documentElement.classList.toggle('dark');
+        }
+        function switchTab(tab) {
+            const tabs = ['acceso', 'ubicacion', 'contacto'];
+            tabs.forEach(t => {
+                document.getElementById('tab-' + t).classList.toggle('hidden', t !== tab);
+                document.getElementById('btn-' + t).classList.toggle('gold-text', t === tab);
+                document.getElementById('btn-' + t).classList.toggle('text-gray-500', t !== tab);
+            });
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;700;900&display=swap');
+        body { font-family: 'Montserrat', sans-serif; }
+        .gold-text { color: #d4af37; border-bottom: 2px solid #d4af37; }
+        .bg-voley-pattern { background-color: #f3f4f6; }
+        .dark .bg-voley-pattern { background-color: #000000; }
+    </style>
+</head>
+<body class="bg-voley-pattern text-gray-900 dark:text-gray-100 min-h-screen transition-colors duration-500">
+
+    <nav class="flex justify-between items-center px-6 py-6 sticky top-0 bg-white/80 dark:bg-black/80 backdrop-blur-md z-50 border-b border-gray-200 dark:border-gray-800">
+        <div class="text-xl font-black italic tracking-tighter">LION'S <span class="gold-text">V.A</span></div>
+        <button onclick="toggleTheme()" class="p-2 bg-gray-200 dark:bg-gray-800 rounded-full">🌙/☀️</button>
+    </nav>
+
+    <main class="py-10 px-4 max-w-lg mx-auto">
+        <div class="flex justify-center gap-4 mb-8 font-bold uppercase tracking-widest text-[10px] sm:text-xs">
+            <button id="btn-acceso" onclick="switchTab('acceso')" class="gold-text pb-1 transition-all">Acceso</button>
+            <button id="btn-ubicacion" onclick="switchTab('ubicacion')" class="text-gray-500 pb-1 transition-all">Ubicación</button>
+            <button id="btn-contacto" onclick="switchTab('contacto')" class="text-gray-500 pb-1 transition-all">Contacto</button>
+        </div>
+
+        <!-- Seccion Acceso -->
+        <div id="tab-acceso" class="bg-white dark:bg-gray-900 p-8 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xl">
+            <h3 class="text-lg font-bold mb-6 text-center">Panel de Control</h3>
+            <form onsubmit="return false" class="space-y-4">
+                <input type="text" placeholder="Usuario" class="w-full p-3 bg-gray-100 dark:bg-black border rounded-xl">
+                <input type="password" placeholder="Clave" class="w-full p-3 bg-gray-100 dark:bg-black border rounded-xl">
+                <button class="w-full bg-amber-600 text-white py-3 rounded-xl font-bold uppercase tracking-widest">Ingresar</button>
+            </form>
+        </div>
+
+        <!-- Seccion Ubicacion -->
+        <div id="tab-ubicacion" class="hidden bg-white dark:bg-gray-900 p-8 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xl text-center">
+            <h3 class="text-lg font-black mb-4 uppercase">Cancha Deportiva</h3>
+            <p class="text-sm opacity-80 leading-relaxed">
+                Venezuela - Barquisimeto<br>
+                Comunidad: San Martin de Porres<br>
+                Cancha Deportiva Juancito Candela
+            </p>
+        </div>
+
+        <!-- Seccion Contacto -->
+        <div id="tab-contacto" class="hidden bg-white dark:bg-gray-900 p-8 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xl">
+            <h3 class="text-lg font-black mb-6 text-center uppercase">Contáctanos</h3>
+            <div class="space-y-4">
+                <a href="#" class="flex items-center gap-4 p-3 bg-gray-100 dark:bg-black rounded-xl">
+                    <span>📱</span> <span class="text-sm">+58 XXX-XXXXXXX</span>
+                </a>
+                <a href="#" class="flex items-center gap-4 p-3 bg-gray-100 dark:bg-black rounded-xl">
+                    <span>📸</span> <span class="text-sm">@LionsVA_Oficial</span>
+                </a>
+                <a href="#" class="flex items-center gap-4 p-3 bg-gray-100 dark:bg-black rounded-xl">
+                    <span>💬</span> <span class="text-sm">Telegram / WhatsApp</span>
+                </a>
+            </div>
+        </div>
+    </main>
+
+</body>
+</html>
