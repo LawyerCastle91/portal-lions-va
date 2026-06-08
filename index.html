@@ -7,16 +7,35 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = { darkMode: 'class' }
+        
         function toggleTheme() {
             document.documentElement.classList.toggle('dark');
         }
+
         function switchTab(tab) {
-            const tabs = ['acceso', 'ubicacion', 'contacto'];
+            const tabs = ['acceso', 'ubicacion', 'horarios', 'contacto'];
             tabs.forEach(t => {
-                document.getElementById('tab-' + t).classList.toggle('hidden', t !== tab);
-                document.getElementById('btn-' + t).classList.toggle('gold-text', t === tab);
-                document.getElementById('btn-' + t).classList.toggle('text-gray-500', t !== tab);
+                const element = document.getElementById('tab-' + t);
+                const btn = document.getElementById('btn-' + t);
+                
+                if (element) element.classList.toggle('hidden', t !== tab);
+                if (btn) {
+                    btn.classList.toggle('gold-text', t === tab);
+                    btn.classList.toggle('text-gray-500', t !== tab);
+                }
             });
+        }
+
+        function toggleMode(isRegister) {
+            const registerFields = document.getElementById('register-fields');
+            const submitBtn = document.getElementById('submit-btn');
+            const toggleText = document.getElementById('toggle-text');
+            
+            registerFields.classList.toggle('hidden', !isRegister);
+            submitBtn.textContent = isRegister ? 'Registrarse' : 'Ingresar';
+            toggleText.innerHTML = isRegister 
+                ? '¿Ya tienes cuenta? <span class="text-amber-600 cursor-pointer" onclick="toggleMode(false)">Inicia sesión</span>' 
+                : '¿No tienes cuenta? <span class="text-amber-600 cursor-pointer" onclick="toggleMode(true)">Regístrate</span>';
         }
     </script>
     <style>
@@ -35,48 +54,49 @@
     </nav>
 
     <main class="py-10 px-4 max-w-lg mx-auto">
-        <div class="flex justify-center gap-4 mb-8 font-bold uppercase tracking-widest text-[10px] sm:text-xs">
-            <button id="btn-acceso" onclick="switchTab('acceso')" class="gold-text pb-1 transition-all">Acceso</button>
-            <button id="btn-ubicacion" onclick="switchTab('ubicacion')" class="text-gray-500 pb-1 transition-all">Ubicación</button>
-            <button id="btn-contacto" onclick="switchTab('contacto')" class="text-gray-500 pb-1 transition-all">Contacto</button>
+        <div class="flex justify-center gap-4 mb-8 font-bold uppercase tracking-widest text-[9px] sm:text-xs">
+            <button id="btn-acceso" onclick="switchTab('acceso')" class="gold-text pb-1">Acceso</button>
+            <button id="btn-ubicacion" onclick="switchTab('ubicacion')" class="text-gray-500 pb-1">Ubicación</button>
+            <button id="btn-horarios" onclick="switchTab('horarios')" class="text-gray-500 pb-1">Horarios</button>
+            <button id="btn-contacto" onclick="switchTab('contacto')" class="text-gray-500 pb-1">Contacto</button>
         </div>
 
         <!-- Seccion Acceso -->
         <div id="tab-acceso" class="bg-white dark:bg-gray-900 p-8 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xl">
             <h3 class="text-lg font-bold mb-6 text-center">Panel de Control</h3>
             <form onsubmit="return false" class="space-y-4">
-                <input type="text" placeholder="Usuario" class="w-full p-3 bg-gray-100 dark:bg-black border rounded-xl">
-                <input type="password" placeholder="Clave" class="w-full p-3 bg-gray-100 dark:bg-black border rounded-xl">
-                <button class="w-full bg-amber-600 text-white py-3 rounded-xl font-bold uppercase tracking-widest">Ingresar</button>
+                <input type="text" placeholder="Usuario" class="w-full p-3 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-xl">
+                <div id="register-fields" class="hidden space-y-4">
+                    <input type="email" placeholder="Correo Electrónico" class="w-full p-3 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-xl">
+                </div>
+                <input type="password" placeholder="Clave" class="w-full p-3 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-xl">
+                <button id="submit-btn" class="w-full bg-amber-600 text-white py-3 rounded-xl font-bold uppercase tracking-widest shadow-lg">Ingresar</button>
+                <p id="toggle-text" class="text-center text-xs mt-4">¿No tienes cuenta? <span class="text-amber-600 cursor-pointer" onclick="toggleMode(true)">Regístrate</span></p>
             </form>
         </div>
 
-        <!-- Seccion Ubicacion -->
+        <!-- Demas Secciones -->
         <div id="tab-ubicacion" class="hidden bg-white dark:bg-gray-900 p-8 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xl text-center">
             <h3 class="text-lg font-black mb-4 uppercase">Cancha Deportiva</h3>
-            <p class="text-sm opacity-80 leading-relaxed">
-                Venezuela - Barquisimeto<br>
-                Comunidad: San Martin de Porres<br>
-                Cancha Deportiva Juancito Candela
-            </p>
+            <p class="text-sm opacity-80 leading-relaxed">Venezuela - Barquisimeto<br>San Martin de Porres</p>
         </div>
 
-        <!-- Seccion Contacto -->
-        <div id="tab-contacto" class="hidden bg-white dark:bg-gray-900 p-8 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xl">
-            <h3 class="text-lg font-black mb-6 text-center uppercase">Contáctanos</h3>
-            <div class="space-y-4">
-                <a href="#" class="flex items-center gap-4 p-3 bg-gray-100 dark:bg-black rounded-xl">
-                    <span>📱</span> <span class="text-sm">+58 XXX-XXXXXXX</span>
-                </a>
-                <a href="#" class="flex items-center gap-4 p-3 bg-gray-100 dark:bg-black rounded-xl">
-                    <span>📸</span> <span class="text-sm">@LionsVA_Oficial</span>
-                </a>
-                <a href="#" class="flex items-center gap-4 p-3 bg-gray-100 dark:bg-black rounded-xl">
-                    <span>💬</span> <span class="text-sm">Telegram / WhatsApp</span>
-                </a>
+        <div id="tab-horarios" class="hidden bg-white dark:bg-gray-900 p-8 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xl text-center">
+            <h3 class="text-lg font-black mb-6 uppercase text-amber-600">Horarios</h3>
+            <div class="p-6 bg-amber-500/10 border border-amber-500/30 rounded-2xl">
+                <p class="text-2xl font-bold">3:45 PM - 6:40 PM</p>
+                <p class="text-sm mt-2 opacity-70">Entrenamientos LUNES - VIERNES</p>
+            </div>
+        </div>
+
+        <div id="tab-contacto" class="hidden bg-white dark:bg-gray-900 p-8 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xl text-center">
+            <h3 class="text-lg font-black mb-6 uppercase">Contáctanos</h3>
+            <div class="grid grid-cols-1 gap-4">
+                <a href="https://www.instagram.com/lionvoleyacadmy" class="flex items-center justify-center gap-3 p-3 bg-pink-600 text-white rounded-xl font-bold hover:opacity-90">Instagram</a>
+                <a href="https://www.tiktok.com/@lionsvoley" class="flex items-center justify-center gap-3 p-3 bg-black text-white rounded-xl font-bold hover:opacity-90">TikTok</a>
+                <a href="https://wa.me/584124717062" class="flex items-center justify-center gap-3 p-3 bg-green-600 text-white rounded-xl font-bold hover:opacity-90">WhatsApp</a>
             </div>
         </div>
     </main>
-
 </body>
 </html>
